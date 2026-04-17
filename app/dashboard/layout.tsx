@@ -18,6 +18,8 @@ import {
   History,
   Bell,
   AlertTriangle,
+  Wrench,
+  Box,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -28,10 +30,12 @@ import { createClient } from "@/lib/supabase-client"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Products", href: "/dashboard/products", icon: Package },
-  { name: "Categories", href: "/dashboard/categories", icon: Tags },
-  { name: "Sales POS", href: "/dashboard/sales", icon: ShoppingCart },
-  { name: "History", href: "/dashboard/history", icon: History },
+  { name: "Gestion Stocks", href: "/dashboard/inventory", icon: Box },
+  { name: "Produits", href: "/dashboard/products", icon: Package },
+  { name: "Catégories", href: "/dashboard/categories", icon: Tags },
+  { name: "Vente POS", href: "/dashboard/sales", icon: ShoppingCart },
+  { name: "Réparations", href: "/dashboard/repairs", icon: Wrench },
+  { name: "Historique", href: "/dashboard/history", icon: History },
 ]
 
 export default function DashboardLayout({
@@ -50,13 +54,35 @@ export default function DashboardLayout({
 
   useEffect(() => {
     fetchLowStock()
-  }, [])
+
+    // Configuration du Realtime pour les produits
+    const channel = supabase
+      .channel('products-stock-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Écouter les updates, inserts et deletes
+          schema: 'public',
+          table: 'products'
+        },
+        () => {
+          // Rafraîchir la liste dès qu'un changement est détecté
+          fetchLowStock()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [supabase])
 
   const fetchLowStock = async () => {
     const { data } = await supabase
       .from("products")
       .select("id, name, stock")
-      .lt("stock", 5)
+      .lt("stock", 10)
+      .gt("stock", 0)
       .order("stock", { ascending: true })
     setLowStockProducts(data || [])
   }
@@ -125,7 +151,7 @@ export default function DashboardLayout({
       )}
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col shadow-sm">
+      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col shadow-sm print:hidden">
         <div className="flex flex-col flex-1 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3 h-16 px-6 border-b border-slate-100 dark:border-slate-800">
             <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-500/30">
@@ -138,9 +164,9 @@ export default function DashboardLayout({
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className="lg:pl-64 print:pl-0">
         {/* Top navbar */}
-        <div className="sticky top-0 z-40 flex items-center justify-between h-16 px-5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-100 dark:border-slate-800 shadow-sm">
+        <div className="sticky top-0 z-40 flex items-center justify-between h-16 px-5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-100 dark:border-slate-800 shadow-sm print:hidden">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"

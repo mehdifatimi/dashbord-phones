@@ -9,6 +9,7 @@ import {
   DollarSign,
   AlertTriangle,
   TrendingUp,
+  Wrench,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -38,8 +39,18 @@ export default function DashboardPage() {
   const [chartData, setChartData] = useState<any[]>([])
   const [topProducts, setTopProducts] = useState<any[]>([])
   const [monthlyData, setMonthlyData] = useState<any[]>([])
+  const [lowStockProducts, setLowStockProducts] = useState<any[]>([])
   const supabase = createClient()
   const { toast } = useToast()
+
+  const fetchLowStock = async () => {
+    const { data } = await supabase
+      .from('products')
+      .select('name, stock')
+      .lt('stock', 10)
+      .gt('stock', 0)
+    setLowStockProducts(data || [])
+  }
 
   const getChartDataFn = useCallback(async () => {
     const today = new Date()
@@ -106,27 +117,32 @@ export default function DashboardPage() {
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      const [productsRes, salesRes, lowStockRes, recentSalesRes] = await Promise.all([
+      const [productsRes, salesRes, lowStockRes, recentSalesRes, repairsRes] = await Promise.all([
         supabase.from("products").select("*", { count: "exact" }),
         supabase.from("sales").select("*", { count: "exact" }),
-        supabase.from("products").select("*").lt("stock", 5),
+        supabase.from("products").select("*").lt("stock", 10).gt("stock", 0),
         supabase
           .from("sales")
           .select("*, products(*)")
           .order("created_at", { ascending: false })
           .limit(5),
+        supabase.from("repairs").select("*").in("status", ["Pending", "In Progress"])
       ])
 
       const totalRevenue = salesRes.data?.reduce((sum, s) => sum + s.total_price, 0) || 0
       const totalProfit = salesRes.data?.reduce((sum, sale) => sum + sale.profit, 0) || 0
+
+      const lowStockData = lowStockRes.data || []
+      setLowStockProducts(lowStockData)
 
       setStats({
         totalProducts: productsRes.count || 0,
         totalSales: salesRes.count || 0,
         totalProfit,
         totalRevenue,
-        lowStockProducts: lowStockRes.data || [],
+        lowStockProducts: lowStockData,
         recentSales: recentSalesRes.data || [],
+        activeRepairs: repairsRes.data?.length || 0,
       } as any)
     } catch (error) {
       toast({
@@ -142,6 +158,7 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchDashboardData()
     getChartDataFn()
+    fetchLowStock()
   }, [fetchDashboardData, getChartDataFn])
 
   if (loading) {
@@ -158,19 +175,36 @@ export default function DashboardPage() {
   const totalRevenue = (stats as any)?.totalRevenue || 0
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-8">
-
-      {/* Header */}
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-          Dashboard Overview
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 font-medium">
-          Welcome back! Here&apos;s what&apos;s happening with your store today.
-        </p>
+    <div className="space-y-8 animate-in fade-in duration-700 pb-10">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Tableau de bord</h1>
+          <p className="text-slate-500 font-medium mt-1">Bienvenue dans votre gestionnaire de boutique.</p>
+        </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Low Stock Alert Banner */}
+      {lowStockProducts.length > 0 && (
+        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-6 rounded-[2.5rem] flex items-start gap-5 shadow-xl shadow-amber-500/5 animate-in slide-in-from-top-4 duration-500">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/30">
+            <AlertTriangle className="w-8 h-8 text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-amber-900 dark:text-amber-400 font-black text-lg">Attention : Stock Faible !</h3>
+            <p className="text-amber-700 dark:text-amber-500/80 text-sm font-medium mt-1">
+              Les produits suivants sont presque épuisés (moins de 10 unités) : 
+              <span className="font-bold ml-1 text-amber-900 dark:text-amber-300">
+                {lowStockProducts.map(p => `${p.name} (${p.stock})`).join(', ')}
+              </span>
+            </p>
+          </div>
+          <Link href="/dashboard/inventory">
+            <Button className="rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 h-12 shadow-lg shadow-amber-500/20 text-xs">
+              Gérer le stock
+            </Button>
+          </Link>
+        </div>
+      )}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {/* Total Products */}
         <Card className="rounded-[1.5rem] border-none shadow-md shadow-slate-200/50 dark:shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-white dark:bg-slate-900 overflow-hidden relative group">
@@ -182,8 +216,8 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="relative z-10">
-            <div className="text-4xl font-black text-slate-900 dark:text-white mb-1 tracking-tight">{stats?.totalProducts}</div>
-            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Products in inventory</p>
+            <div className="text-4xl font-black text-slate-900 dark:text-white mb-1 tracking-tight">{stats?.totalSales}</div>
+            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">All time sales count</p>
           </CardContent>
         </Card>
 
@@ -233,6 +267,21 @@ export default function DashboardPage() {
               {formatCurrency(stats?.totalProfit || 0)}
             </div>
             <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Net profit all time</p>
+          </CardContent>
+        </Card>
+
+        {/* Active Repairs */}
+        <Card className="rounded-[1.5rem] border-none shadow-md shadow-slate-200/50 dark:shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-white dark:bg-slate-900 overflow-hidden relative group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 dark:bg-amber-500/5 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110 duration-500 ease-out"></div>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
+            <CardTitle className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Active Repairs</CardTitle>
+            <div className="p-3 bg-amber-100 dark:bg-amber-500/20 rounded-2xl text-amber-600 dark:text-amber-400 shadow-sm">
+              <Wrench className="h-5 w-5" />
+            </div>
+          </CardHeader>
+          <CardContent className="relative z-10">
+            <div className="text-4xl font-black text-slate-900 dark:text-white mb-1 tracking-tight">{(stats as any)?.activeRepairs}</div>
+            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Tickets in progress</p>
           </CardContent>
         </Card>
       </div>
@@ -442,21 +491,6 @@ export default function DashboardPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  stats.lowStockProducts.map((product) => (
-                    <TableRow key={product.id} className="border-b-red-100/50 dark:border-red-500/10 hover:bg-red-100/30 dark:hover:bg-red-500/5 transition-colors">
-                      <TableCell className="font-bold text-slate-800 dark:text-slate-200 pl-6">
-                        {product.name}
-                      </TableCell>
-                      <TableCell className="font-black text-red-500">{product.stock}</TableCell>
-                      <TableCell className="text-right pr-6">
-                        <Link href="/dashboard/products">
-                          <Button variant="ghost" size="sm" className="h-8 rounded-lg font-bold text-xs bg-white dark:bg-slate-800 hover:text-indigo-600">
-                            Restock
-                          </Button>
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  ))
                 )}
               </TableBody>
             </Table>
