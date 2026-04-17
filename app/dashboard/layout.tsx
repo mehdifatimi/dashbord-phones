@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -52,6 +52,16 @@ export default function DashboardLayout({
   const router = useRouter()
   const supabase = createClient()
 
+  const fetchLowStock = useCallback(async () => {
+    const { data } = await supabase
+      .from("products")
+      .select("id, name, stock")
+      .lt("stock", 10)
+      .gt("stock", 0)
+      .order("stock", { ascending: true })
+    setLowStockProducts(data || [])
+  }, [supabase])
+
   useEffect(() => {
     fetchLowStock()
 
@@ -76,16 +86,6 @@ export default function DashboardLayout({
       supabase.removeChannel(channel)
     }
   }, [supabase, fetchLowStock])
-
-  const fetchLowStock = useCallback(async () => {
-    const { data } = await supabase
-      .from("products")
-      .select("id, name, stock")
-      .lt("stock", 10)
-      .gt("stock", 0)
-      .order("stock", { ascending: true })
-    setLowStockProducts(data || [])
-  }, [supabase])
 
   const handleSignOut = async () => {
     await signOut()

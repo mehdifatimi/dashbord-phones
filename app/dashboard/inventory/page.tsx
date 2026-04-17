@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { 
   Package, 
   Search, 
@@ -35,6 +35,21 @@ export default function InventoryPage() {
   const supabase = createClient()
   const { toast } = useToast()
 
+  const fetchData = useCallback(async () => {
+    try {
+      const [pRes, cRes] = await Promise.all([
+        supabase.from("products").select("*").order("name"),
+        supabase.from("categories").select("*").order("name")
+      ])
+      setProducts(pRes.data || [])
+      setCategories(cRes.data || [])
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }, [supabase])
+
   useEffect(() => {
     fetchData()
     
@@ -50,21 +65,6 @@ export default function InventoryPage() {
       supabase.removeChannel(channel)
     }
   }, [fetchData, supabase])
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [pRes, cRes] = await Promise.all([
-        supabase.from("products").select("*").order("name"),
-        supabase.from("categories").select("*").order("name")
-      ])
-      setProducts(pRes.data || [])
-      setCategories(cRes.data || [])
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }, [supabase])
 
   const updateStock = async (productId: string, currentStock: number, delta: number) => {
     const newStock = Math.max(0, currentStock + delta)

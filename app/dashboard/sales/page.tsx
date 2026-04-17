@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
@@ -39,26 +39,6 @@ export default function POSPage() {
   const { toast } = useToast()
   const printRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    Promise.all([fetchProducts(), fetchCategories()])
-
-    // Abonnement Temps-Réel pour les produits
-    const channel = supabase
-      .channel('pos-stock-live')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'products' },
-        () => {
-          fetchProducts()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [supabase, fetchProducts, fetchCategories])
-
   const fetchCategories = useCallback(async () => {
     try {
       const { data } = await supabase.from("categories").select("*").order("name")
@@ -82,6 +62,26 @@ export default function POSPage() {
       setLoading(false)
     }
   }, [supabase])
+
+  useEffect(() => {
+    Promise.all([fetchProducts(), fetchCategories()])
+
+    // Abonnement Temps-Réel pour les produits
+    const channel = supabase
+      .channel('pos-stock-live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products' },
+        () => {
+          fetchProducts()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [supabase, fetchProducts, fetchCategories])
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())

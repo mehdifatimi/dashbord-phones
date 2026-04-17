@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase-client"
 import { useToast } from "@/hooks/use-toast"
 import { 
@@ -56,10 +56,6 @@ export default function RepairsPage() {
   const { toast } = useToast()
   const supabase = createClient()
 
-  useEffect(() => {
-    fetchRepairs()
-  }, [fetchRepairs])
-
   const fetchRepairs = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -74,6 +70,10 @@ export default function RepairsPage() {
       setLoading(false)
     }
   }, [supabase, toast])
+
+  useEffect(() => {
+    fetchRepairs()
+  }, [fetchRepairs])
 
   const handleAddRepair = async (e: React.FormEvent) => {
     e.preventDefault()
