@@ -45,6 +45,8 @@ export interface DashboardStats {
   totalProducts: number;
   totalSales: number;
   totalProfit: number;
+  totalRevenue: number;
+  activeRepairs: number;
   lowStockProducts: Product[];
   recentSales: Sale[];
 }

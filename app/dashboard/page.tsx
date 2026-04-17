@@ -143,7 +143,7 @@ export default function DashboardPage() {
         lowStockProducts: lowStockData,
         recentSales: recentSalesRes.data || [],
         activeRepairs: repairsRes.data?.length || 0,
-      } as any)
+      })
     } catch (error) {
       toast({
         title: "Error",
@@ -172,7 +172,7 @@ export default function DashboardPage() {
     )
   }
 
-  const totalRevenue = (stats as any)?.totalRevenue || 0
+  const displayRevenue = (stats as any)?.totalRevenue || 0
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-10">
@@ -216,8 +216,8 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="relative z-10">
-            <div className="text-4xl font-black text-slate-900 dark:text-white mb-1 tracking-tight">{stats?.totalSales}</div>
-            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">All time sales count</p>
+            <div className="text-4xl font-black text-slate-900 dark:text-white mb-1 tracking-tight">{stats?.totalProducts || 0}</div>
+            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Live inventory variants</p>
           </CardContent>
         </Card>
 
@@ -247,7 +247,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="relative z-10">
             <div className="text-3xl lg:text-4xl font-black text-violet-600 dark:text-violet-400 mb-1 tracking-tight">
-              {formatCurrency(totalRevenue)}
+              {formatCurrency(displayRevenue)}
             </div>
             <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Gross income all time</p>
           </CardContent>
@@ -280,7 +280,7 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="relative z-10">
-            <div className="text-4xl font-black text-slate-900 dark:text-white mb-1 tracking-tight">{(stats as any)?.activeRepairs}</div>
+            <div className="text-4xl font-black text-slate-900 dark:text-white mb-1 tracking-tight">{stats?.activeRepairs || 0}</div>
             <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Tickets in progress</p>
           </CardContent>
         </Card>
@@ -491,6 +491,21 @@ export default function DashboardPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
+                  stats?.lowStockProducts.map((p) => (
+                    <TableRow key={p.id} className="border-b-gray-50/50 dark:border-slate-800/20">
+                      <TableCell className="font-bold text-slate-800 dark:text-slate-200 pl-6">{p.name}</TableCell>
+                      <TableCell>
+                        <span className="px-2 py-1 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg font-black text-xs animate-pulse">
+                          {p.stock} units
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                        <Link href="/dashboard/inventory">
+                          <Button size="sm" variant="ghost" className="h-8 text-[11px] font-black uppercase text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl">Order</Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>
