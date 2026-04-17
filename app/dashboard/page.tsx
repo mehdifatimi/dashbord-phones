@@ -43,14 +43,14 @@ export default function DashboardPage() {
   const supabase = createClient()
   const { toast } = useToast()
 
-  const fetchLowStock = async () => {
+  const fetchLowStock = useCallback(async () => {
     const { data } = await supabase
       .from('products')
       .select('name, stock')
       .lt('stock', 10)
       .gt('stock', 0)
     setLowStockProducts(data || [])
-  }
+  }, [supabase])
 
   const getChartDataFn = useCallback(async () => {
     const today = new Date()
@@ -159,7 +159,7 @@ export default function DashboardPage() {
     fetchDashboardData()
     getChartDataFn()
     fetchLowStock()
-  }, [fetchDashboardData, getChartDataFn])
+  }, [fetchDashboardData, getChartDataFn, fetchLowStock])
 
   if (loading) {
     return (

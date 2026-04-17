@@ -49,9 +49,9 @@ export default function InventoryPage() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [fetchData, supabase])
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [pRes, cRes] = await Promise.all([
         supabase.from("products").select("*").order("name"),
@@ -64,7 +64,7 @@ export default function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [supabase])
 
   const updateStock = async (productId: string, currentStock: number, delta: number) => {
     const newStock = Math.max(0, currentStock + delta)
@@ -144,7 +144,7 @@ export default function InventoryPage() {
         
         <Card className="rounded-[2rem] border-none shadow-sm bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
            <CardHeader className="pb-2">
-            <CardTitle className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Valeur de l'Inventaire</CardTitle>
+            <CardTitle className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Valeur de l&apos;Inventaire</CardTitle>
           </CardHeader>
           <CardContent>
              <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">

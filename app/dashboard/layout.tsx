@@ -75,9 +75,9 @@ export default function DashboardLayout({
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [supabase])
+  }, [supabase, fetchLowStock])
 
-  const fetchLowStock = async () => {
+  const fetchLowStock = useCallback(async () => {
     const { data } = await supabase
       .from("products")
       .select("id, name, stock")
@@ -85,7 +85,7 @@ export default function DashboardLayout({
       .gt("stock", 0)
       .order("stock", { ascending: true })
     setLowStockProducts(data || [])
-  }
+  }, [supabase])
 
   const handleSignOut = async () => {
     await signOut()

@@ -58,9 +58,9 @@ export default function RepairsPage() {
 
   useEffect(() => {
     fetchRepairs()
-  }, [])
+  }, [fetchRepairs])
 
-  const fetchRepairs = async () => {
+  const fetchRepairs = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("repairs")
@@ -73,7 +73,7 @@ export default function RepairsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [supabase, toast])
 
   const handleAddRepair = async (e: React.FormEvent) => {
     e.preventDefault()

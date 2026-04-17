@@ -57,18 +57,18 @@ export default function POSPage() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [supabase])
+  }, [supabase, fetchProducts, fetchCategories])
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const { data } = await supabase.from("categories").select("*").order("name")
       setCategories(data || [])
     } catch (err) {
       console.error(err)
     }
-  }
+  }, [supabase])
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       const { data } = await supabase
         .from("products")
@@ -81,7 +81,7 @@ export default function POSPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [supabase])
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())
@@ -642,7 +642,7 @@ export default function POSPage() {
                       <td className="w-14">
                         <div className="w-12 h-12 bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm">
                           {item.product.image_url ? (
-                            <img src={item.product.image_url} className="w-full h-full object-cover" alt="" />
+                            <Image src={item.product.image_url} width={48} height={48} className="w-full h-full object-cover" alt={item.product.name} />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center bg-slate-100">
                               <ImageIcon className="w-5 h-5 text-slate-300" />
