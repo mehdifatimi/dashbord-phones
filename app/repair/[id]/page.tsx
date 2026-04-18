@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { createClient } from "@/lib/supabase-client"
-import { use } from "react"
 import { 
   Clock, 
   Wrench, 
@@ -61,20 +61,22 @@ const statusConfig: Record<string, { label: string; color: string; bg: string; i
     color: 'text-red-600', 
     bg: 'bg-red-50 border-red-200',
     icon: XCircle,
-    desc: 'Cette réparation a été annulée. Contactez-nous pour plus d\'informations.'
+    desc: "Cette réparation a été annulée. Contactez-nous pour plus d'informations."
   },
 }
 
 const steps = ['Pending', 'In Progress', 'Ready', 'Delivered']
 
-export default function RepairTrackingPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function RepairTrackingPage() {
+  const params = useParams()
+  const id = params.id as string
   const [repair, setRepair] = useState<RepairPublic | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
+    if (!id) return
     const fetchRepair = async () => {
       try {
         const { data, error } = await supabase
