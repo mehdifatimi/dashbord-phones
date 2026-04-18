@@ -320,7 +320,7 @@ export default function RepairsPage() {
                     </SelectContent>
                   </Select>
                   <p className="text-[11px] text-emerald-600/60 dark:text-emerald-400/50 mt-1 pl-1 font-semibold leading-relaxed">
-                    Optionnel. L'article sélectionné sera déduit de votre inventaire une fois le ticket marqué comme <strong className="text-emerald-600 dark:text-emerald-400">Delivered</strong>.
+                    Optionnel. L&apos;article sélectionné sera déduit de votre inventaire une fois le ticket marqué comme <strong className="text-emerald-600 dark:text-emerald-400">Delivered</strong>.
                   </p>
                 </div>
               </div>

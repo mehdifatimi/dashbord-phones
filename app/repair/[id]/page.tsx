@@ -47,7 +47,7 @@ const statusConfig: Record<string, { label: string; color: string; bg: string; i
     color: 'text-emerald-600', 
     bg: 'bg-emerald-50 border-emerald-200',
     icon: CheckCircle2,
-    desc: '✅ Votre appareil est réparé et prêt à être récupéré en boutique !'
+    desc: "Votre appareil est réparé et prêt à être récupéré en boutique !"
   },
   'Delivered': { 
     label: 'Livré', 

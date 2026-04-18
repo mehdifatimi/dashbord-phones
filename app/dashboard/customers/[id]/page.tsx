@@ -154,7 +154,7 @@ export default function CustomerProfilePage() {
           <Card className="rounded-[1.5rem] border-none shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
             <CardHeader className="border-b border-gray-100 dark:border-slate-800/60 pb-4">
               <CardTitle className="font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <ShoppingBag className="w-5 h-5 text-indigo-500" /> Historique d'Achats ({sales.length})
+                <ShoppingBag className="w-5 h-5 text-indigo-500" /> Historique d&apos;Achats ({sales.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
