@@ -81,3 +81,23 @@
     @apply bg-slate-300 dark:bg-slate-700;
   }
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-ticket, #printable-ticket * {
+    visibility: visible;
+  }
+  #printable-ticket {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+  }
+  @page {
+    margin: 0;
+  }
+}

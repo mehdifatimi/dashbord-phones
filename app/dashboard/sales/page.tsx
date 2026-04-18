@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { ShoppingCart, Search, Plus, Minus, Trash2, Loader2, CreditCard, Printer, CheckCircle2, X, Image as ImageIcon, AlertTriangle } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { ShoppingCart, Search, Plus, Minus, Trash2, Loader2, CreditCard, Printer, CheckCircle2, X, Image as ImageIcon, AlertTriangle, UserPlus } from "lucide-react"
 import { createClient } from "@/lib/supabase-client"
 import { useToast } from "@/hooks/use-toast"
 import { formatCurrency } from "@/lib/utils"
@@ -34,10 +35,51 @@ export default function POSPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [receipt, setReceipt] = useState<ReceiptData | null>(null)
+  
+  // CRM Linkage
+  const [customers, setCustomers] = useState<{ id: string; full_name: string; phone: string }[]>([])
+  const [selectedCustomer, setSelectedCustomer] = useState<string>("")
+  
+  const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false)
+  const [newCustomer, setNewCustomer] = useState({ full_name: "", phone: "", email: "", address: "" })
 
   const supabase = createClient()
   const { toast } = useToast()
   const printRef = useRef<HTMLDivElement>(null)
+
+  const handleAddCustomer = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const { data, error } = await supabase
+        .from("customers")
+        .insert([{
+          full_name: newCustomer.full_name,
+          phone: newCustomer.phone,
+          email: newCustomer.email || null,
+          address: newCustomer.address || null
+        }])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setCustomers([...customers, data].sort((a,b) => a.full_name.localeCompare(b.full_name)))
+      setSelectedCustomer(data.id)
+      setIsAddCustomerOpen(false)
+      setNewCustomer({ full_name: "", phone: "", email: "", address: "" })
+      
+      toast({
+        title: "Success",
+        description: "Customer added successfully.",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add customer.",
+        variant: "destructive",
+      })
+    }
+  }
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -63,8 +105,17 @@ export default function POSPage() {
     }
   }, [supabase])
 
+  const fetchCustomers = useCallback(async () => {
+    try {
+      const { data } = await supabase.from("customers").select("id, full_name, phone").order("full_name")
+      setCustomers(data || [])
+    } catch (err) {
+      console.error(err)
+    }
+  }, [supabase])
+
   useEffect(() => {
-    Promise.all([fetchProducts(), fetchCategories()])
+    Promise.all([fetchProducts(), fetchCategories(), fetchCustomers()])
 
     // Abonnement Temps-Réel pour les produits
     const channel = supabase
@@ -81,7 +132,7 @@ export default function POSPage() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [supabase, fetchProducts, fetchCategories])
+  }, [supabase, fetchProducts, fetchCategories, fetchCustomers])
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())
@@ -144,12 +195,16 @@ export default function POSPage() {
     setSubmitting(true)
 
     try {
+      const receiptNumber = `REC-${Date.now().toString().slice(-6)}`
+
       const salesData = cart.map(item => ({
         product_id: item.product.id,
+        customer_id: selectedCustomer || null,
         quantity: item.quantity,
         total_price: item.unit_price * item.quantity,
         profit: (item.unit_price - item.product.purchase_price) * item.quantity,
         imei: item.imei || null,
+        receipt_number: receiptNumber
       }))
 
       const { error: saleError } = await supabase.from("sales").insert(salesData)
@@ -177,7 +232,7 @@ export default function POSPage() {
         items: [...cart],
         total: grandTotal,
         date: new Date(),
-        receiptNumber: `REC-${Date.now().toString().slice(-6)}`,
+        receiptNumber,
       })
 
       setCart([])
@@ -596,21 +651,68 @@ export default function POSPage() {
           </div>
 
           <div className="p-8 pt-6 space-y-6 relative z-10 border-t border-white/5 bg-slate-900/50 backdrop-blur-xl">
-             <div className="space-y-3">
-                <div className="flex justify-between items-center opacity-40">
-                   <span className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Sous-total</span>
-                   <span className="text-sm font-bold text-white">{formatCurrency(grandTotal)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                   <span className="text-xs font-black text-slate-400 uppercase tracking-[0.3em]">Total à payer</span>
-                   <span className="text-3xl font-black text-white tracking-tighter tabular-nums">{formatCurrency(grandTotal)}</span>
-                </div>
+             <div className="space-y-4">
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                      👑 Client (Optionnel)
+                      <Dialog open={isAddCustomerOpen} onOpenChange={setIsAddCustomerOpen}>
+                        <DialogTrigger asChild>
+                          <button className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors">
+                            <UserPlus className="w-3 h-3" /> Nouveau
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px] rounded-[2rem] border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl z-[100]">
+                          <form onSubmit={handleAddCustomer}>
+                            <DialogHeader>
+                              <DialogTitle className="font-extrabold text-xl text-slate-800 dark:text-white">Créer un Client</DialogTitle>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                              <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Nom Complet *</Label>
+                                <Input required placeholder="Ex: Mohamed Alami" className="rounded-xl border-slate-200"
+                                  value={newCustomer.full_name} onChange={(e) => setNewCustomer({...newCustomer, full_name: e.target.value})} />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Téléphone *</Label>
+                                <Input required placeholder="Ex: 06..." className="rounded-xl border-slate-200"
+                                  value={newCustomer.phone} onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})} />
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button type="submit" className="w-full rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 h-12">Sauvegarder</Button>
+                            </DialogFooter>
+                          </form>
+                        </DialogContent>
+                      </Dialog>
+                    </label>
+                    <select
+                      className="w-full text-sm bg-slate-800 text-white rounded-xl h-10 px-3 border border-slate-700 outline-none focus:border-indigo-500"
+                      value={selectedCustomer}
+                      onChange={(e) => setSelectedCustomer(e.target.value)}
+                    >
+                      <option value="">-- Client de passage --</option>
+                      {customers.map(c => (
+                        <option key={c.id} value={c.id}>{c.full_name} ({c.phone})</option>
+                      ))}
+                    </select>
+                 </div>
+
+                 <div className="space-y-3 pt-3 border-t border-slate-700">
+                    <div className="flex justify-between items-center opacity-40">
+                       <span className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Sous-total</span>
+                       <span className="text-sm font-bold text-white">{formatCurrency(grandTotal)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                       <span className="text-xs font-black text-slate-400 uppercase tracking-[0.3em]">Total à payer</span>
+                       <span className="text-3xl font-black text-white tracking-tighter tabular-nums">{formatCurrency(grandTotal)}</span>
+                    </div>
+                 </div>
              </div>
 
              <Button
                 onClick={handleCompleteSale}
                 disabled={cart.length === 0 || submitting}
-                className="w-full h-16 rounded-[1.5rem] bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm uppercase tracking-[0.2em] shadow-2xl shadow-indigo-600/30 transition-all active:scale-95 flex gap-3"
+                className="w-full h-16 rounded-[1.5rem] bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm uppercase tracking-[0.2em] shadow-2xl shadow-indigo-600/30 transition-all active:scale-95 flex gap-3 mt-4"
              >
                 {submitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <><CreditCard className="w-6 h-6" /> Valider la Vente</>}
              </Button>

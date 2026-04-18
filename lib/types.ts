@@ -17,19 +17,32 @@ export interface Product {
   categories?: Category;
 }
 
+export interface Customer {
+  id: string;
+  full_name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  created_at: string;
+}
+
 export interface Sale {
   id: string;
   product_id: string;
+  customer_id?: string;
   quantity: number;
   total_price: number;
   profit: number;
   imei?: string;
+  receipt_number?: string;
   created_at: string;
   products?: Product;
+  customers?: Customer;
 }
 
 export interface Repair {
   id: string;
+  customer_id?: string;
   customer_name: string;
   customer_phone: string;
   device_model: string;
@@ -39,6 +52,9 @@ export interface Repair {
   status: 'Pending' | 'In Progress' | 'Ready' | 'Delivered' | 'Cancelled';
   created_at: string;
   updated_at: string;
+  customers?: Customer;
+  used_product_id?: string;
+  is_billed?: boolean;
 }
 
 export interface DashboardStats {

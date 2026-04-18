@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase-client"
 import { formatCurrency } from "@/lib/utils"
-import { Activity, CalendarDays, DollarSign, Loader2, Package, TrendingUp, ChevronRight } from "lucide-react"
+import { Activity, CalendarDays, DollarSign, Loader2, Package, TrendingUp, ChevronRight, Search } from "lucide-react"
 
 type Sale = {
   id: string;
@@ -34,16 +35,23 @@ export default function HistoryPage() {
   const [sales, setSales] = useState<Sale[]>([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<"daily" | "monthly">("daily")
+  const [searchTicket, setSearchTicket] = useState("")
   
   const router = useRouter()
   const supabase = createClient()
 
   const fetchSales = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("sales")
         .select("*, products(name)")
         .order("created_at", { ascending: false })
+
+      if (searchTicket.trim().length > 0) {
+        query = query.ilike('receipt_number', `%${searchTicket.trim()}%`)
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
       setSales(data || [])
@@ -52,7 +60,7 @@ export default function HistoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [supabase])
+  }, [supabase, searchTicket])
 
   useEffect(() => {
     fetchSales()
@@ -125,125 +133,183 @@ export default function HistoryPage() {
           </p>
         </div>
         
-        <div className="w-full sm:w-[220px]">
-          <Select value={viewMode} onValueChange={(val: any) => setViewMode(val)}>
-            <SelectTrigger className="h-12 bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800 shadow-sm rounded-xl font-bold focus:ring-indigo-500 text-slate-700 dark:text-slate-200">
-              <CalendarDays className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="View Mode" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="daily" className="font-semibold">Daily Breakdown</SelectItem>
-              <SelectItem value="monthly" className="font-semibold">Monthly Breakdown</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+          <div className="relative w-full sm:w-[250px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input 
+              placeholder="TICKET N° (ex: REC-967673)..." 
+              value={searchTicket}
+              onChange={(e) => setSearchTicket(e.target.value)}
+              className="pl-9 h-12 bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800 shadow-sm rounded-xl font-bold focus:ring-indigo-500"
+            />
+          </div>
+          <div className="w-full sm:w-[200px]">
+            <Select value={viewMode} onValueChange={(val: any) => setViewMode(val)} disabled={searchTicket.length > 0}>
+              <SelectTrigger className="h-12 bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800 shadow-sm rounded-xl font-bold focus:ring-indigo-500 text-slate-700 dark:text-slate-200">
+                <CalendarDays className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="View Mode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily" className="font-semibold">Daily Breakdown</SelectItem>
+                <SelectItem value="monthly" className="font-semibold">Monthly Breakdown</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
       {/* Global Stats Row */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="rounded-[1.5rem] border-none shadow-sm shadow-slate-200/50 dark:shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-white dark:bg-slate-900 overflow-hidden relative group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 dark:bg-indigo-500/5 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110 duration-500 ease-out"></div>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
-            <CardTitle className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Total Revenue</CardTitle>
-            <div className="p-3 bg-indigo-100 dark:bg-indigo-500/20 rounded-2xl text-indigo-600 dark:text-indigo-400 shadow-sm">
-               <DollarSign className="h-5 w-5" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative z-10">
-            <div className="text-3xl font-black text-slate-900 dark:text-white mb-1 tracking-tight">{formatCurrency(totalAllTimeRevenue)}</div>
-            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Gross income all time</p>
-          </CardContent>
-        </Card>
+      {searchTicket.length === 0 && (
+        <div className="grid gap-6 md:grid-cols-3">
+          <Card className="rounded-[1.5rem] border-none shadow-sm shadow-slate-200/50 dark:shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-white dark:bg-slate-900 overflow-hidden relative group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 dark:bg-indigo-500/5 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110 duration-500 ease-out"></div>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
+              <CardTitle className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Total Revenue</CardTitle>
+              <div className="p-3 bg-indigo-100 dark:bg-indigo-500/20 rounded-2xl text-indigo-600 dark:text-indigo-400 shadow-sm">
+                 <DollarSign className="h-5 w-5" />
+              </div>
+            </CardHeader>
+            <CardContent className="relative z-10">
+              <div className="text-3xl font-black text-slate-900 dark:text-white mb-1 tracking-tight">{formatCurrency(totalAllTimeRevenue)}</div>
+              <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Gross income all time</p>
+            </CardContent>
+          </Card>
 
-        <Card className="rounded-[1.5rem] border-none shadow-sm shadow-slate-200/50 dark:shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-white dark:bg-slate-900 overflow-hidden relative group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110 duration-500 ease-out"></div>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
-            <CardTitle className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Total Profit</CardTitle>
-            <div className="p-3 bg-emerald-100 dark:bg-emerald-500/20 rounded-2xl text-emerald-600 dark:text-emerald-400 shadow-sm">
-               <TrendingUp className="h-5 w-5" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative z-10">
-            <div className="text-3xl font-black text-emerald-500 mb-1 tracking-tight">{formatCurrency(totalAllTimeProfit)}</div>
-            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Net profit all time</p>
-          </CardContent>
-        </Card>
+          <Card className="rounded-[1.5rem] border-none shadow-sm shadow-slate-200/50 dark:shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-white dark:bg-slate-900 overflow-hidden relative group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110 duration-500 ease-out"></div>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
+              <CardTitle className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Total Profit</CardTitle>
+              <div className="p-3 bg-emerald-100 dark:bg-emerald-500/20 rounded-2xl text-emerald-600 dark:text-emerald-400 shadow-sm">
+                 <TrendingUp className="h-5 w-5" />
+              </div>
+            </CardHeader>
+            <CardContent className="relative z-10">
+              <div className="text-3xl font-black text-emerald-500 mb-1 tracking-tight">{formatCurrency(totalAllTimeProfit)}</div>
+              <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Net profit all time</p>
+            </CardContent>
+          </Card>
 
-        <Card className="rounded-[1.5rem] border-none shadow-sm shadow-slate-200/50 dark:shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-white dark:bg-slate-900 overflow-hidden relative group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 dark:bg-blue-500/5 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110 duration-500 ease-out"></div>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
-            <CardTitle className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Items Sold</CardTitle>
-            <div className="p-3 bg-blue-100 dark:bg-blue-500/20 rounded-2xl text-blue-600 dark:text-blue-400 shadow-sm">
-               <Package className="h-5 w-5" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative z-10">
-            <div className="text-3xl font-black text-slate-900 dark:text-white mb-1 tracking-tight">{totalAllTimeItems}</div>
-            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Total volume moved</p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card className="rounded-[1.5rem] border-none shadow-sm shadow-slate-200/50 dark:shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-white dark:bg-slate-900 overflow-hidden relative group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 dark:bg-blue-500/5 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110 duration-500 ease-out"></div>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
+              <CardTitle className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Items Sold</CardTitle>
+              <div className="p-3 bg-blue-100 dark:bg-blue-500/20 rounded-2xl text-blue-600 dark:text-blue-400 shadow-sm">
+                 <Package className="h-5 w-5" />
+              </div>
+            </CardHeader>
+            <CardContent className="relative z-10">
+              <div className="text-3xl font-black text-slate-900 dark:text-white mb-1 tracking-tight">{totalAllTimeItems}</div>
+              <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Total volume moved</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* History Table */}
       <Card className="rounded-[1.5rem] border-none shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
         <CardHeader className="border-b border-gray-100 dark:border-slate-800/60 pb-5">
           <CardTitle className="font-extrabold text-slate-800 dark:text-slate-100 flex items-center justify-between">
-             {viewMode === "daily" ? "Daily Performance" : "Monthly Performance"}
-             <span className="text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 px-3 py-1 rounded-full uppercase tracking-wider">
-               Click any row for details
-             </span>
+             {searchTicket.length > 0 ? "Résultats de Recherche" : (viewMode === "daily" ? "Daily Performance" : "Monthly Performance")}
+             {searchTicket.length === 0 && (
+               <span className="text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 px-3 py-1 rounded-full uppercase tracking-wider">
+                 Click any row for details
+               </span>
+             )}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader className="bg-slate-50/50 dark:bg-slate-800/20">
-              <TableRow className="border-b-gray-100 dark:border-slate-800/60">
-                <TableHead className="w-[300px] pl-8 uppercase text-[10px] tracking-wider text-slate-500 font-bold">Date</TableHead>
-                <TableHead className="uppercase text-[10px] tracking-wider text-slate-500 font-bold">Total Transactions</TableHead>
-                <TableHead className="uppercase text-[10px] tracking-wider text-slate-500 font-bold">Items Sold</TableHead>
-                <TableHead className="uppercase text-[10px] tracking-wider text-slate-500 font-bold">Revenue</TableHead>
-                <TableHead className="text-right pr-8 uppercase text-[10px] tracking-wider text-slate-500 font-bold">Profit</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {groupedData.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-16">
-                    <div className="flex flex-col items-center justify-center text-slate-400">
-                      <Activity className="w-16 h-16 mb-4 opacity-20" />
-                      <span className="font-bold text-slate-500">No records found</span>
-                    </div>
-                  </TableCell>
+              {searchTicket.length > 0 ? (
+                <TableRow className="border-b-gray-100 dark:border-slate-800/60">
+                  <TableHead className="pl-8 uppercase text-[10px] tracking-wider text-slate-500 font-bold">Ticket N°</TableHead>
+                  <TableHead className="uppercase text-[10px] tracking-wider text-slate-500 font-bold">Produit</TableHead>
+                  <TableHead className="uppercase text-[10px] tracking-wider text-slate-500 font-bold">Qty</TableHead>
+                  <TableHead className="uppercase text-[10px] tracking-wider text-slate-500 font-bold">Total</TableHead>
+                  <TableHead className="text-right pr-8 uppercase text-[10px] tracking-wider text-slate-500 font-bold">Date</TableHead>
                 </TableRow>
               ) : (
-                groupedData.map((row) => (
-                  <TableRow 
-                    key={row.key} 
-                    className="border-b-gray-50 dark:border-slate-800/40 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 transition-colors cursor-pointer group/row"
-                    onClick={() => {
-                        router.push(`/dashboard/history/${viewMode}/${row.key}`)
-                    }}
-                  >
-                    <TableCell className="pl-8 py-5 font-extrabold text-slate-800 dark:text-slate-200">
-                      {row.date}
-                    </TableCell>
-                    <TableCell className="font-semibold text-slate-500 text-sm">
-                       <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg">{row.salesCount}</span>
-                    </TableCell>
-                    <TableCell className="font-semibold text-slate-500 text-sm">
-                       <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg">{row.totalItems}</span>
-                    </TableCell>
-                    <TableCell className="font-extrabold text-slate-700 dark:text-slate-300">
-                       {formatCurrency(row.totalRevenue)}
-                    </TableCell>
-                    <TableCell className="text-right pr-8 font-black text-emerald-500">
-                       <div className="flex items-center justify-end gap-3">
-                         +{formatCurrency(row.totalProfit)}
-                         <ChevronRight className="w-5 h-5 text-slate-300 group-hover/row:text-indigo-600 dark:group-hover/row:text-indigo-400 group-hover/row:translate-x-1 transition-all duration-300" />
-                       </div>
+                <TableRow className="border-b-gray-100 dark:border-slate-800/60">
+                  <TableHead className="w-[300px] pl-8 uppercase text-[10px] tracking-wider text-slate-500 font-bold">Date</TableHead>
+                  <TableHead className="uppercase text-[10px] tracking-wider text-slate-500 font-bold">Total Transactions</TableHead>
+                  <TableHead className="uppercase text-[10px] tracking-wider text-slate-500 font-bold">Items Sold</TableHead>
+                  <TableHead className="uppercase text-[10px] tracking-wider text-slate-500 font-bold">Revenue</TableHead>
+                  <TableHead className="text-right pr-8 uppercase text-[10px] tracking-wider text-slate-500 font-bold">Profit</TableHead>
+                </TableRow>
+              )}
+            </TableHeader>
+            <TableBody>
+              {searchTicket.length > 0 ? (
+                sales.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-16">
+                      <div className="flex flex-col items-center justify-center text-slate-400">
+                        <Activity className="w-16 h-16 mb-4 opacity-20" />
+                        <span className="font-bold text-slate-500">Aucun ticket trouvé</span>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ))
+                ) : (
+                  sales.map((sale) => (
+                    <TableRow key={sale.id} className="border-b-gray-50 dark:border-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <TableCell className="pl-8 py-5 font-black text-slate-800 dark:text-slate-200">
+                        {(sale as any).receipt_number || "N/A"}
+                      </TableCell>
+                      <TableCell className="font-extrabold text-slate-700 dark:text-slate-300">
+                        {sale.products?.name || "Produit inconnu"}
+                      </TableCell>
+                      <TableCell className="font-semibold text-slate-500 text-sm">
+                        x{sale.quantity}
+                      </TableCell>
+                      <TableCell className="font-extrabold text-indigo-600 dark:text-indigo-400">
+                         {formatCurrency(sale.total_price)}
+                      </TableCell>
+                      <TableCell className="text-right pr-8 font-semibold text-slate-500 text-sm">
+                         {new Date(sale.created_at).toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )
+              ) : (
+                groupedData.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-16">
+                      <div className="flex flex-col items-center justify-center text-slate-400">
+                        <Activity className="w-16 h-16 mb-4 opacity-20" />
+                        <span className="font-bold text-slate-500">No records found</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  groupedData.map((row) => (
+                    <TableRow 
+                      key={row.key} 
+                      className="border-b-gray-50 dark:border-slate-800/40 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 transition-colors cursor-pointer group/row"
+                      onClick={() => {
+                          router.push(`/dashboard/history/${viewMode}/${row.key}`)
+                      }}
+                    >
+                      <TableCell className="pl-8 py-5 font-extrabold text-slate-800 dark:text-slate-200">
+                        {row.date}
+                      </TableCell>
+                      <TableCell className="font-semibold text-slate-500 text-sm">
+                         <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg">{row.salesCount}</span>
+                      </TableCell>
+                      <TableCell className="font-semibold text-slate-500 text-sm">
+                         <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg">{row.totalItems}</span>
+                      </TableCell>
+                      <TableCell className="font-extrabold text-slate-700 dark:text-slate-300">
+                         {formatCurrency(row.totalRevenue)}
+                      </TableCell>
+                      <TableCell className="text-right pr-8 font-black text-emerald-500">
+                         <div className="flex items-center justify-end gap-3">
+                           +{formatCurrency(row.totalProfit)}
+                           <ChevronRight className="w-5 h-5 text-slate-300 group-hover/row:text-indigo-600 dark:group-hover/row:text-indigo-400 group-hover/row:translate-x-1 transition-all duration-300" />
+                         </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )
               )}
             </TableBody>
           </Table>

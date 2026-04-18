@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   Wrench,
   Box,
+  Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -35,6 +36,7 @@ const navigation = [
   { name: "Catégories", href: "/dashboard/categories", icon: Tags },
   { name: "Vente POS", href: "/dashboard/sales", icon: ShoppingCart },
   { name: "Réparations", href: "/dashboard/repairs", icon: Wrench },
+  { name: "Clients (CRM)", href: "/dashboard/customers", icon: Users },
   { name: "Historique", href: "/dashboard/history", icon: History },
 ]
 
