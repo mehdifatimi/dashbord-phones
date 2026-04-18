@@ -54,7 +54,8 @@ export async function middleware(request: NextRequest) {
 
   const isAuthPage = request.nextUrl.pathname.startsWith('/login') ||
                      request.nextUrl.pathname.startsWith('/register')
-  const isPublicPage = request.nextUrl.pathname === '/'
+  const isPublicPage = request.nextUrl.pathname === '/' ||
+                       request.nextUrl.pathname.startsWith('/repair')
 
   if (!user && !isAuthPage && !isPublicPage) {
     const url = request.nextUrl.clone()
