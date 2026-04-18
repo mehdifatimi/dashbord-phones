@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase-client"
 import { formatCurrency } from "@/lib/utils"
-import { Activity, CalendarDays, DollarSign, Loader2, Package, TrendingUp, ChevronRight, Search } from "lucide-react"
+import { Activity, CalendarDays, DollarSign, Loader2, Package, TrendingUp, ChevronRight, Search, Download, Printer } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { exportCSV, exportPrintPDF } from "@/lib/export"
 
 type Sale = {
   id: string;
@@ -133,7 +135,40 @@ export default function HistoryPage() {
           </p>
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          {/* Export Buttons */}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-12 rounded-xl font-bold gap-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 dark:hover:bg-emerald-500/10 transition-colors"
+              onClick={() =>
+                exportCSV(
+                  sales,
+                  [
+                    { label: "Ticket N°", value: (s) => (s as any).receipt_number || "" },
+                    { label: "Produit", value: (s) => s.products?.name || "" },
+                    { label: "Quantité", value: (s) => s.quantity },
+                    { label: "Total (Dh)", value: (s) => s.total_price },
+                    { label: "Profit (Dh)", value: (s) => s.profit },
+                    { label: "Date", value: (s) => new Date(s.created_at).toLocaleString("fr-FR") },
+                  ],
+                  "historique_ventes"
+                )
+              }
+            >
+              <Download className="w-4 h-4" /> CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-12 rounded-xl font-bold gap-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 dark:hover:bg-indigo-500/10 transition-colors"
+              onClick={() => exportPrintPDF("history-table-print", "Historique des Ventes")}
+            >
+              <Printer className="w-4 h-4" /> PDF
+            </Button>
+          </div>
+
           <div className="relative w-full sm:w-[250px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input 
@@ -206,7 +241,7 @@ export default function HistoryPage() {
       )}
 
       {/* History Table */}
-      <Card className="rounded-[1.5rem] border-none shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
+      <Card className="rounded-[1.5rem] border-none shadow-sm bg-white dark:bg-slate-900 overflow-hidden" id="history-table-print">
         <CardHeader className="border-b border-gray-100 dark:border-slate-800/60 pb-5">
           <CardTitle className="font-extrabold text-slate-800 dark:text-slate-100 flex items-center justify-between">
              {searchTicket.length > 0 ? "Résultats de Recherche" : (viewMode === "daily" ? "Daily Performance" : "Monthly Performance")}

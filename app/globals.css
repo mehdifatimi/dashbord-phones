@@ -82,22 +82,36 @@
   }
 }
 
+@media screen {
+  #printable-ticket {
+    display: none;
+  }
+}
+
 @media print {
   body * {
     visibility: hidden;
   }
-  #printable-ticket, #printable-ticket * {
+  #printable-ticket {
+    display: block !important;
+    visibility: visible;
+  }
+  #printable-ticket * {
     visibility: visible;
   }
   #printable-ticket {
-    position: absolute;
+    position: fixed;
     left: 0;
     top: 0;
-    width: 100%;
+    width: 210mm;
     margin: 0;
-    padding: 20px;
+    padding: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
   }
   @page {
+    size: A4 landscape;
     margin: 0;
   }
 }

@@ -10,6 +10,8 @@ import {
   AlertTriangle,
   TrendingUp,
   Wrench,
+  Calendar,
+  ChevronDown
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -17,6 +19,13 @@ import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { createClient } from "@/lib/supabase-client"
 import type { DashboardStats } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   BarChart,
   Bar,
@@ -40,6 +49,7 @@ export default function DashboardPage() {
   const [topProducts, setTopProducts] = useState<any[]>([])
   const [monthlyData, setMonthlyData] = useState<any[]>([])
   const [lowStockProducts, setLowStockProducts] = useState<any[]>([])
+  const [period, setPeriod] = useState<string>("month")
   const supabase = createClient()
   const { toast } = useToast()
 
@@ -117,7 +127,27 @@ export default function DashboardPage() {
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      const [productsRes, salesRes, lowStockRes, recentSalesRes, repairsRes] = await Promise.all([
+      const now = new Date()
+      let startDate = new Date(0).toISOString()
+      let prevStartDate = new Date(0).toISOString()
+      let prevEndDate = new Date(0).toISOString()
+
+      if (period === "today") {
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+        prevStartDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toISOString()
+        prevEndDate = startDate
+      } else if (period === "week") {
+        const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        startDate = last7Days.toISOString()
+        prevStartDate = new Date(last7Days.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+        prevEndDate = startDate
+      } else if (period === "month") {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+        prevStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
+        prevEndDate = startDate
+      }
+
+      const [productsRes, salesRes, lowStockRes, recentSalesRes, repairsRes, filteredSalesRes, prevSalesRes] = await Promise.all([
         supabase.from("products").select("*", { count: "exact" }),
         supabase.from("sales").select("*", { count: "exact" }),
         supabase.from("products").select("*").lt("stock", 10).gt("stock", 0),
@@ -126,24 +156,42 @@ export default function DashboardPage() {
           .select("*, products(*)")
           .order("created_at", { ascending: false })
           .limit(5),
-        supabase.from("repairs").select("*").in("status", ["Pending", "In Progress"])
+        supabase.from("repairs").select("*").in("status", ["Pending", "In Progress"]),
+        supabase.from("sales").select("total_price, profit").gte("created_at", startDate),
+        period !== "all" 
+          ? supabase.from("sales").select("total_price, profit").gte("created_at", prevStartDate).lt("created_at", prevEndDate)
+          : Promise.resolve({ data: [] })
       ])
 
-      const totalRevenue = salesRes.data?.reduce((sum, s) => sum + s.total_price, 0) || 0
-      const totalProfit = salesRes.data?.reduce((sum, sale) => sum + sale.profit, 0) || 0
+      const periodRevenue = filteredSalesRes.data?.reduce((sum, s) => sum + s.total_price, 0) || 0
+      const periodProfit = filteredSalesRes.data?.reduce((sum, sale) => sum + sale.profit, 0) || 0
+      const periodSalesCount = filteredSalesRes.data?.length || 0
+
+      const prevRevenue = (prevSalesRes as any).data?.reduce((sum: number, s: any) => sum + s.total_price, 0) || 0
+      const prevProfit = (prevSalesRes as any).data?.reduce((sum: number, s: any) => sum + s.profit, 0) || 0
+      const prevSalesCount = (prevSalesRes as any).data?.length || 0
+
+      const calculateGrowth = (current: number, prev: number) => {
+        if (prev === 0) return current > 0 ? 100 : 0
+        return Math.round(((current - prev) / prev) * 100)
+      }
 
       const lowStockData = lowStockRes.data || []
       setLowStockProducts(lowStockData)
 
       setStats({
         totalProducts: productsRes.count || 0,
-        totalSales: salesRes.count || 0,
-        totalProfit,
-        totalRevenue,
+        totalSales: periodSalesCount,
+        totalProfit: periodProfit,
+        totalRevenue: periodRevenue,
         lowStockProducts: lowStockData,
         recentSales: recentSalesRes.data || [],
         activeRepairs: repairsRes.data?.length || 0,
-      })
+        // Add growth data for UI
+        revenueGrowth: calculateGrowth(periodRevenue, prevRevenue),
+        profitGrowth: calculateGrowth(periodProfit, prevProfit),
+        salesGrowth: calculateGrowth(periodSalesCount, prevSalesCount),
+      } as any)
     } catch (error) {
       toast({
         title: "Error",
@@ -153,7 +201,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [supabase, toast])
+  }, [supabase, toast, period])
 
   useEffect(() => {
     fetchDashboardData()
@@ -176,10 +224,25 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-10">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Tableau de bord</h1>
           <p className="text-slate-500 font-medium mt-1">Bienvenue dans votre gestionnaire de boutique.</p>
+        </div>
+        
+        <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-1.5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-[180px] h-11 border-none bg-transparent focus:ring-0 font-bold text-slate-700 dark:text-slate-200">
+              <Calendar className="w-4 h-4 mr-2 text-indigo-500" />
+              <SelectValue placeholder="Période" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-slate-100 dark:border-slate-800 shadow-2xl p-1">
+              <SelectItem value="today" className="rounded-lg font-semibold py-2.5">Aujourd&apos;hui</SelectItem>
+              <SelectItem value="week" className="rounded-lg font-semibold py-2.5">7 derniers jours</SelectItem>
+              <SelectItem value="month" className="rounded-lg font-semibold py-2.5">Ce mois-ci</SelectItem>
+              <SelectItem value="all" className="rounded-lg font-semibold py-2.5">Tout l&apos;historique</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -231,8 +294,18 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="relative z-10">
-            <div className="text-4xl font-black text-slate-900 dark:text-white mb-1 tracking-tight">{stats?.totalSales}</div>
-            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">All time sales count</p>
+            <div className="flex items-end gap-3 mb-1">
+              <div className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">{stats?.totalSales}</div>
+              {period !== "all" && (
+                <div className={cn("flex items-center text-[10px] font-black px-1.5 py-0.5 rounded-lg mb-1.5 shadow-sm", 
+                  (stats as any)?.salesGrowth >= 0 ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600")}>
+                  {(stats as any)?.salesGrowth >= 0 ? "↑" : "↓"} {Math.abs((stats as any)?.salesGrowth)}%
+                </div>
+              )}
+            </div>
+            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+              {period === "all" ? "All time sales count" : `Sales vs previous period`}
+            </p>
           </CardContent>
         </Card>
 
@@ -246,10 +319,20 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="relative z-10">
-            <div className="text-3xl lg:text-4xl font-black text-violet-600 dark:text-violet-400 mb-1 tracking-tight">
-              {formatCurrency(displayRevenue)}
+            <div className="flex items-end gap-3 mb-1">
+              <div className="text-3xl lg:text-4xl font-black text-violet-600 dark:text-violet-400 tracking-tight">
+                {formatCurrency(displayRevenue)}
+              </div>
+              {period !== "all" && (
+                <div className={cn("flex items-center text-[10px] font-black px-1.5 py-0.5 rounded-lg mb-2 shadow-sm", 
+                  (stats as any)?.revenueGrowth >= 0 ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600")}>
+                  {(stats as any)?.revenueGrowth >= 0 ? "↑" : "↓"} {Math.abs((stats as any)?.revenueGrowth)}%
+                </div>
+              )}
             </div>
-            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Gross income all time</p>
+            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+              {period === "all" ? "Gross income all time" : `Revenue vs prev. period`}
+            </p>
           </CardContent>
         </Card>
 
@@ -263,10 +346,20 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="relative z-10">
-            <div className="text-3xl lg:text-4xl font-black text-emerald-500 mb-1 tracking-tight">
-              {formatCurrency(stats?.totalProfit || 0)}
+            <div className="flex items-end gap-3 mb-1">
+              <div className="text-3xl lg:text-4xl font-black text-emerald-500 tracking-tight">
+                {formatCurrency(stats?.totalProfit || 0)}
+              </div>
+              {period !== "all" && (
+                <div className={cn("flex items-center text-[10px] font-black px-1.5 py-0.5 rounded-lg mb-2 shadow-sm", 
+                  (stats as any)?.profitGrowth >= 0 ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600")}>
+                  {(stats as any)?.profitGrowth >= 0 ? "↑" : "↓"} {Math.abs((stats as any)?.profitGrowth)}%
+                </div>
+              )}
             </div>
-            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Net profit all time</p>
+            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+              {period === "all" ? "Net profit all time" : `Profit vs prev. period`}
+            </p>
           </CardContent>
         </Card>
 

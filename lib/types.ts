@@ -4,17 +4,30 @@ export interface Category {
   created_at: string;
 }
 
+export interface Supplier {
+  id: string;
+  name: string;
+  contact_name?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+  created_at: string;
+}
+
 export interface Product {
   id: string;
   name: string;
   brand: string;
   category_id: string;
+  supplier_id?: string;
   purchase_price: number;
   sale_price: number;
   stock: number;
   image_url: string | null;
   created_at: string;
   categories?: Category;
+  suppliers?: Supplier;
 }
 
 export interface Customer {

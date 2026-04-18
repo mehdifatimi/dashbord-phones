@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Users, Plus, Search, Mail, Phone, MapPin } from "lucide-react"
+import { Users, Plus, Search, Mail, Phone, MapPin, Download, Printer } from "lucide-react"
+import { exportCSV, exportPrintPDF } from "@/lib/export"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -107,7 +108,38 @@ export default function CustomersPage() {
           <p className="text-slate-500 font-medium mt-1">Gérez votre base de données clients et leur historique.</p>
         </div>
         
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Export buttons */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-10 rounded-xl font-bold gap-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 dark:hover:bg-emerald-500/10 transition-colors"
+            onClick={() =>
+              exportCSV(
+                filteredCustomers,
+                [
+                  { label: "Nom Complet", value: (c) => c.full_name },
+                  { label: "Téléphone", value: (c) => c.phone },
+                  { label: "Email", value: (c) => c.email || "" },
+                  { label: "Adresse", value: (c) => c.address || "" },
+                  { label: "Ajouté le", value: (c) => new Date(c.created_at).toLocaleDateString("fr-FR") },
+                ],
+                "clients_crm"
+              )
+            }
+          >
+            <Download className="w-4 h-4" /> CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-10 rounded-xl font-bold gap-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 dark:hover:bg-indigo-500/10 transition-colors"
+            onClick={() => exportPrintPDF("customers-table-print", "Liste des Clients CRM")}
+          >
+            <Printer className="w-4 h-4" /> PDF
+          </Button>
+
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
             <Button className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/20">
               <Plus className="w-5 h-5 mr-2" />
@@ -169,10 +201,11 @@ export default function CustomersPage() {
               </DialogFooter>
             </form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
-      <Card className="rounded-[1.5rem] border-none shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
+      <Card className="rounded-[1.5rem] border-none shadow-sm bg-white dark:bg-slate-900 overflow-hidden" id="customers-table-print">
         <CardHeader className="border-b border-gray-100 dark:border-slate-800/60 pb-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <CardTitle className="font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
